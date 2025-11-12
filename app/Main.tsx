@@ -32,12 +32,13 @@ export default function Home({ posts }) {
             <div className="space-y-6">
               <div>
                 <h1 className="mb-4 text-5xl font-bold text-balance md:text-6xl">
-                  Hi, I'm Your Name
+                  Hi, I'm Poojesh Shetty
                 </h1>
                 <p className="text-xl leading-relaxed text-balance text-gray-400">
-                  I'm a full-stack developer passionate about creating beautiful and functional web
-                  experiences. With expertise in modern technologies like React, Next.js, and
-                  Tailwind CSS, I build scalable applications that solve real-world problems.
+                  I'm a frontend developer, curious and driven by the joy of building. This website
+                  is my space to document what I create, explore, and learn. Half of the times I am
+                  either confused on what to learn or where to start. If you any kind of feedback
+                  let me know.
                 </p>
               </div>
 
