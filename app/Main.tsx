@@ -37,8 +37,7 @@ export default function Home({ posts }) {
                 <p className="text-xl leading-relaxed text-balance text-gray-400">
                   I'm a frontend developer, curious and driven by the joy of building. This website
                   is my space to document what I create, explore, and learn. Half of the times I am
-                  either confused on what to learn or where to start. If you any kind of feedback
-                  let me know.
+                  either confused on what to learn or where to start.
                 </p>
               </div>
 
