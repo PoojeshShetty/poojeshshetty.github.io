@@ -1,0 +1,143 @@
+---
+title: 'Understanding Sentry to create my own Centry'
+date: '2026-06-21'
+tags: ['project', 'sentry', 'hobby project', 'frontend', 'backend']
+draft: false
+summary: Build a hobby project called centry, a minimum product with core features of logging with SDK support similar to what sentry provides
+---
+
+## Introduction
+
+Currently I have been exploring with Claude. Since I didn't had any idea as to what to build, I have made the decision to learn whatever open source software present out there by first learning and understanding them and then rebuilding them on my home. And this is how currently I have build Centry which is a copy of sentry but for now only has basic application of capturing logs from a node backend or javascript frontend (with react helper functions)
+This is my project link - https://github.com/PoojeshShetty/centry
+
+## Current short comings.
+
+For my centry project i have been able to have user login, project registration and through project registration have dsn setup through which user can put the dsn to their project and the logs will be captured in the centry system. This is more of a local running project because deploying and maintaining the application is not something I am looking for. My main focus was to understand how sentry as a product work under the hood. So if you want to try this out you might have to clone the project and try it out yourself.
+
+## Current Journey
+
+In order to start with Centry, I first went ahead and cloned the centry project. Through that I spin up Claude and tried analysis the features present for a mvp. I was able to stuck down with 3 main aspects
+
+- Frontend -> This is where user actions around registering, creating project and viewing logs will take place
+- Backend -> This will provide api endpoints to persist the data for our frontend and also provide endpoint to get logs of the system
+- SDK -> This will be a node package which our application will use with the dedicated project DSN (Data Source Name) to send out the logs to their respective project id.
+
+Claude helped me identify these sections and with some back and forth, I was able to layout a minimum plan that will be required to build out Centry
+
+## How it was planned
+
+To develop centry, I went with using spec driven development. You can see details in the root folder under .sdlc where in each section of the project is layed out using a spec requirements, design, task and implementation of the task. This flow helped me to have a more systematic plan to be laid out instead of going all over the place developing the planned tasks. The flow was mostly around setting foundation of backend and frontend, developing flow module wise and then planning and setting up the sdk. This is the main source of the spec driven flow that i use with some tweaking for my own liking - https://github.com/sermakarevich/sddw
+With the spec driven development following where the steps on how each phase provided assistance using Claude
+
+- Requirements -> This is the command using which first I planned out the user stories. With requirement command, I provided the context on what needs to be done. With some QnA once the flow is final, a feature branch is created and the requirements md file is created which lays out the defined user stories that will be covered in this
+- Design -> This command helps out in laying out the code flow for the requirement. Which file needs to be created and updated and what type of code flow approach to be used is fixed in this design phase. In this phase we also define the testing approach that we would want to follow. I generally follow the TDD where in during implementation phase I can see the failing test and review if the test aligns with what I want to be developed and thus see the actual code being implemented following the test quardrails
+- Taskify -> This command is the one i use to have the list of task laid out which i want my claude to implement as per the desing
+- Implement -> This command implements the task one by one. I need to specify the task number with the folder path of the requirements and the implementation steps begin where first the TDD is laid out and then the actual passing code is built out.
+  I have tweaked the instruction to provide a commit step wherein i will first review the implementation and if all good then the implement steps goes and commits the changes. This helps in having more control on the changes that are going in task by task. Thus, reducing overwhelming code to be reviewed after the end of the Claude implementation.
+
+## Architecture
+
+I went with a monorepo setup with shared packages so that i can have more control over the aspects of the project wherein i can reuse function across domains thus avoiding duplication and following DRY principle. The main aspects of the application are under packages folder which has the frontend, backend and the sdk defined. The shared folder has utility functions which will help out in reusing functions across the applications.
+For backend i have went with the techstack following node+express+postgres. Redis is added using docker but for now not in use. Plan is to use in some form of rate limiting, catching and any message queuing use case as and when implemented and required
+For frontend i have used react+antd(with styled components). This tech stack I followed more for my familiarity
+For sdk I have javascript since at this stage I wanted to integrate the sdk in my centry frontend and backend system itself
+
+## Backend Design
+
+For Backend following where the design and flow of the modules
+
+- The User flow for backend is planned in a way wherein user will register themselves, register their project and then get dsn to use in their application. For this flow then initial model requirements are logged in the model folder which has accounts, log, project and projectKey.
+- The code structure is divided around the folder structure as follow
+  - Migration - This is for noting down the migration which is formed through sequelize
+  - Models - These are model definitions used by the backend
+  - Repositories - This has model wise function definition to had db related query defined and executed. More aligned towards using sequelize to perform orm queries on db
+  - Routes - This defines the api routes of the application
+  - Seeders - This was an adoc script added to test out the log ui view
+  - Tests - Unit tests written for the required code module
+  - Types - Types defined as per the required flow
+
+## Frontend Design
+
+For Frontend following are the design and flows
+
+- The user flow for frontend follows registration, project setup and then see logs as per project as and how the user integrates the dsb in their application.
+- The code structure is divided around the folder structure as follow
+  - **Auth flow** — register → login → JWT stored in memory (via Zustand store). The JWT is included in every API request as `Authorization: Bearer <token>`.
+  - **Project management** — after login, users create projects. Each project gets a DSN (Data Source Name) in the format `http://<publicKey>@<host>/<projectId>` which they copy into their application.
+  - **Log explorer** — the main view. Fetches logs for the selected project, shows level, timestamp, body, and lets you expand a log to see all attributes. Ownership is checked server-side against the JWT subject — you can only see logs for your own projects.
+  - **Styled components** — defined outside render methods to avoid re-creating component classes on every render. This was a deliberate decision to keep styling co-located with the component without the CSS-class clash problems of global stylesheets.
+  - **Zustand** — used for global auth state (token, user). The store is small for now but having it in place means adding features like project switching or notification state won't require prop drilling later. Though for now the requirement was not needed. I wanted to explore zustand for which I used it
+
+## SDK Design
+
+We have 2 SDKs — one for Node backends and one for React frontends. Both follow the same envelope wire format so the backend can ingest logs from either without any special casing.
+
+### Node SDK (`@centry/sdk`)
+
+The Node SDK is structured around four concerns: **init**, **captureLog**, **buffer**, and **transport**.
+
+- **init** — parses the DSN (`http://<publicKey>@<host>/<projectId>`) into its parts and stores the resolved config in a module-level singleton. Calling `init()` more than once is a no-op with a warning.
+- **captureLog** — the heart of the SDK. It reads the config, interpolates the message template with params, assembles a `LogItem` with timestamp, severity, attributes (sdk name/version, server hostname, stack frames for errors), runs the optional `beforeSendLog` hook, and pushes to the buffer.
+- **buffer** — a simple in-memory array with a hard cap of 1000 items. It flushes automatically when it hits 100 items or every 5 seconds via a `setInterval`. On SIGTERM/SIGINT it does a final flush before exiting so you don't lose the last batch of logs on graceful shutdown.
+- **transport** — takes the flushed batch, serializes it into the Sentry envelope format (newline-delimited JSON), and POSTs it to the backend with an `X-Sentry-Auth` header carrying the public key. Non-2xx responses are logged to stderr — the SDK never throws.
+
+The logger surface exposed to users is simply `logger.info(...)`, `logger.warn(...)`, `logger.error(...)` etc., each mapping to the right OTel severity number.
+
+### React SDK (`@centry/sdk-react`)
+
+The React SDK extends the same core flow but adds browser-specific auto-instrumentation that runs at `init()` time:
+
+- **Global error capture** — patches `window.onerror` and `window.addEventListener('unhandledrejection')` to automatically ship uncaught exceptions and unhandled promise rejections as `fatal` logs.
+- **Fetch instrumentation** — wraps `window.fetch` to log every outbound HTTP call with method, URL, status code, and duration. Calls to the Centry ingest endpoint itself are bypassed to avoid infinite loops.
+- **XHR instrumentation** — same idea for `XMLHttpRequest` via `open`/`send` monkey-patching.
+- **Navigation instrumentation** — wraps `history.pushState` and `history.replaceState` to log route changes, useful for tracking SPA navigation flow.
+- **`useLogger` hook** — returns a memoized logger bound to the calling component's name. Every log from that component automatically gets a `component.name` attribute, making it easy to filter logs by component in the UI.
+- **Session traceId** — on `init()`, a random 16-char hex `traceId` is generated for the browser session. Every log carries this ID so you can correlate all events from a single user session.
+
+## How it all connects — the log flow end to end
+
+This is the part worth understanding if you want to grasp how Sentry-style SDKs actually work under the hood.
+
+```
+Your app code
+    │
+    ▼
+logger.error("Something broke", [detail], { userId: 123 })
+    │
+    ▼
+captureLog()         ← assembles LogItem: timestamp, level, body, attributes, traceId
+    │
+    ▼
+Buffer               ← in-memory array, max 1000; auto-flushes at 100 items or every 5s
+    │  (flush)
+    ▼
+Transport            ← serialises batch into Sentry envelope format, POSTs to /api/envelope
+    │
+    ▼
+Backend (Express)    ← parses X-Sentry-Auth, extracts publicKey → looks up project
+    │
+    ▼
+Postgres             ← stores LogItem rows against the project
+    │
+    ▼
+Frontend UI          ← queries logs per project via JWT-authenticated REST endpoint
+```
+
+### The envelope format
+
+The envelope is newline-delimited JSON — not a single JSON object. The first line is the envelope header (sdk version, sent_at timestamp), then for each log there are two lines: an item header (`{ type: 'log', length: 1 }`) and the log payload. The backend reads this as raw text and processes each item independently, so a malformed item can be skipped without failing the whole batch.
+
+```
+{"sdk_version":"0.1.0","sent_at":"2026-06-21T10:00:00.000Z","source":"centry-node"}
+{"type":"log","length":1}
+{"timestamp":1750500000000,"level":"error","severity_number":17,"body":"Something broke","attributes":{...}}
+```
+
+### Why buffer instead of sending immediately?
+
+Sending one HTTP request per log would be expensive — especially for a backend that might emit hundreds of logs per second under load. The buffer batches logs and sends them in groups of up to 100, dramatically reducing network overhead and making it far easier for the backend to handle ingestion at scale.
+
+## Ending thought
+
+The main insight from building Centry is that Sentry's core value — capturing and correlating logs across services — is not magic. It is a small number of well-defined pieces: a DSN to route logs to the right project, a buffer to batch them efficiently, an envelope wire format that both SDKs and the backend agree on, and a simple UI to query them. Understanding each piece in isolation makes the whole system much less mysterious.

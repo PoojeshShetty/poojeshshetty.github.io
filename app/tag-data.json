@@ -1,4 +1,9 @@
 {
+  "project": 1,
+  "sentry": 1,
+  "hobby-project": 1,
+  "frontend": 1,
+  "backend": 1,
   "react": 1,
   "ui": 1
 }
