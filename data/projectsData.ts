@@ -14,14 +14,12 @@ const projectsData: Project[] = [
     imgSrc: '/static/images/centry/centry-img.png',
     href: 'https://github.com/PoojeshShetty/centry',
   },
-  // {
-  //   title: 'The Time Machine',
-  //   description: `Imagine being able to travel back in time or to the future. Simple turn the knob
-  //   to the desired date and press "Go". No more worrying about lost keys or
-  //   forgotten headphones with this simple yet affordable solution.`,
-  //   imgSrc: '/static/images/time-machine.jpg',
-  //   href: '/blog/the-time-machine',
-  // },
+  {
+    title: 'Code Agent',
+    description: `A hobby project exploring AI-powered code agents, built to learn agent architectures, tool integration, and developer-assistant workflows.`,
+    imgSrc: '/static/images/code-agent/code-agent.png',
+    href: 'https://github.com/PoojeshShetty/codeagent',
+  },
 ]
 
 export default projectsData
